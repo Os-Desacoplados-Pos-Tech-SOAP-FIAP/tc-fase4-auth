@@ -25,15 +25,15 @@ describe('auth.handler', () => {
     expect(JSON.parse(res.body!).code).toBe('CLIENTE_NAO_ENCONTRADO');
   });
 
-  it('devolve 200 com JWT escopo CLIENTE quando cliente existe', async () => {
+  it('devolve 200 com JWT de perfil CLIENTE, sem CPF, quando cliente existe', async () => {
     (buscarClientePorCpf as jest.Mock).mockResolvedValue({ id: 'abc-1', nome: 'Maria', tipo: 'PF' });
     const res = await handler(evento({ cpf: '529.982.247-25' }));
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body!);
     const claims = jwt.verify(body.access_token, 'segredo-teste') as Record<string, unknown>;
     expect(claims.sub).toBe('abc-1');
-    expect(claims.cpf).toBe('52998224725');
-    expect(claims.scope).toBe('CLIENTE');
+    expect(claims).not.toHaveProperty('cpf');
+    expect(claims.perfil).toBe('CLIENTE');
     expect(body.token_type).toBe('Bearer');
   });
 

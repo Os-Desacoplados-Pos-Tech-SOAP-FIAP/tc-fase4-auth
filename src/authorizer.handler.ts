@@ -3,14 +3,12 @@ import type {
   APIGatewaySimpleAuthorizerWithContextResult,
 } from 'aws-lambda';
 
-import { validarToken } from './jwt';
+import { type ClienteTokenPayload, validarToken } from './jwt';
 import { getSecret } from './secrets';
 
-type Resultado = APIGatewaySimpleAuthorizerWithContextResult<
-  { sub: string; cpf: string } | undefined
->;
+type Resultado = APIGatewaySimpleAuthorizerWithContextResult<ClienteTokenPayload | undefined>;
 
-/** Lambda authorizer (HTTP API, payload 2.0, simple response) das rotas /publico/*. */
+/** Lambda authorizer (HTTP API, payload 2.0, simple response) das rotas /api/os/publico/*. */
 export async function handler(event: APIGatewayRequestAuthorizerEventV2): Promise<Resultado> {
   const negado: Resultado = { isAuthorized: false, context: undefined };
 
@@ -18,9 +16,9 @@ export async function handler(event: APIGatewayRequestAuthorizerEventV2): Promis
   if (!auth.startsWith('Bearer ')) return negado;
 
   try {
-    const secret = await getSecret(process.env.JWT_SECRET_ID ?? 'oficina-mecanica/JWT_SECRET');
+    const secret = await getSecret(process.env.JWT_SECRET_ID ?? 'oficina-fase4/JWT_SECRET');
     const payload = validarToken(secret, auth.slice(7));
-    return { isAuthorized: true, context: { sub: payload.sub, cpf: payload.cpf } };
+    return { isAuthorized: true, context: { sub: payload.sub, perfil: payload.perfil } };
   } catch {
     return negado;
   }

@@ -2,7 +2,7 @@ import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from '
 
 import { cpfValido, limparCpf } from './cpf';
 import { buscarClientePorCpf } from './db';
-import { emitirToken } from './jwt';
+import { emitirToken, VALIDADE_SEGUNDOS } from './jwt';
 import { getSecret } from './secrets';
 
 const json = (statusCode: number, body: unknown): APIGatewayProxyStructuredResultV2 => ({
@@ -13,7 +13,7 @@ const json = (statusCode: number, body: unknown): APIGatewayProxyStructuredResul
 
 /**
  * POST /auth — autentica o cliente pelo CPF em 3 etapas (requisito da fase):
- * 1. valida formato/dígitos; 2. consulta existência na base; 3. emite JWT escopo CLIENTE.
+ * 1. valida formato/dígitos; 2. consulta existência na base; 3. emite JWT com perfil CLIENTE.
  */
 export async function handler(
   event: APIGatewayProxyEventV2,
@@ -39,12 +39,12 @@ export async function handler(
   }
 
   const jwtSecret = await getSecret(process.env.JWT_SECRET_ID ?? 'oficina-mecanica/JWT_SECRET');
-  const accessToken = emitirToken(jwtSecret, { sub: cliente.id, cpf, scope: 'CLIENTE' });
+  const accessToken = emitirToken(jwtSecret, cliente.id);
 
   return json(200, {
     access_token: accessToken,
     token_type: 'Bearer',
-    expires_in: 3600,
+    expires_in: VALIDADE_SEGUNDOS,
     cliente: { id: cliente.id, nome: cliente.nome },
   });
 }
