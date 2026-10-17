@@ -1,0 +1,26 @@
+{
+  "name": "tc-fase4-auth",
+  "version": "1.0.0",
+  "description": "Autenticação serverless por CPF - Tech Challenge Fase 4",
+  "private": true,
+  "scripts": {
+    "build": "esbuild src/auth.handler.ts --bundle --platform=node --target=node22 --external:@aws-sdk/* --outfile=dist/auth/index.js && esbuild src/authorizer.handler.ts --bundle --platform=node --target=node22 --external:@aws-sdk/* --outfile=dist/authorizer/index.js",
+    "test": "jest",
+    "test:cov": "jest --coverage",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.600.0",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.140",
+    "@types/jest": "^29.5.14",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.23.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.3.3"
+  }
+}
