@@ -17,6 +17,7 @@ import jwt from 'jsonwebtoken';
 
 import { handler } from '../src/auth.handler';
 import { buscarClientePorCpf, OsIndisponivelError } from '../src/os-client';
+import { getSecret } from '../src/secrets';
 
 const OS_URL = 'http://alb-interno.local';
 const CPF_COM_MASCARA = '529.982.247-25';
@@ -83,6 +84,41 @@ describe('auth.handler', () => {
     expect(JSON.parse(res.body!).code).toBe('CONFIGURACAO_AUSENTE');
     expect(buscar).not.toHaveBeenCalled();
     expect(JSON.stringify(logs.flatMap((spy) => spy.mock.calls))).toContain('OS_INTERNAL_URL');
+  });
+
+  it.each([
+    ['token interno', 'oficina-fase4/INTERNAL_SERVICE_TOKEN'],
+    ['JWT_SECRET', 'oficina-fase4/JWT_SECRET'],
+  ])('devolve 500 estruturado quando falha ao ler o segredo %s', async (_nome, secretId) => {
+    const getSecretMock = getSecret as jest.Mock;
+    getSecretMock.mockImplementation((id: string) =>
+      id === secretId
+        ? Promise.reject(new Error('AccessDeniedException'))
+        : Promise.resolve(SEGREDOS[id]),
+    );
+    buscar.mockResolvedValue({ id: 'abc-1', nome: 'Maria' });
+
+    try {
+      const res = await handler(evento({ cpf: CPF_COM_MASCARA }));
+
+      expect(res.statusCode).toBe(500);
+      expect(JSON.parse(res.body!)).toEqual({
+        code: 'SEGREDO_INDISPONIVEL',
+        message: expect.any(String),
+      });
+      const registros = (console.error as jest.Mock).mock.calls.map(([linha]) =>
+        JSON.parse(linha as string),
+      );
+      expect(registros).toContainEqual({
+        level: 'error',
+        code: 'SEGREDO_INDISPONIVEL',
+        message: expect.stringContaining(secretId),
+      });
+      const saida = JSON.stringify(logs.flatMap((spy) => spy.mock.calls));
+      Object.values(SEGREDOS).forEach((valor) => expect(saida).not.toContain(valor));
+    } finally {
+      getSecretMock.mockImplementation((id: string) => Promise.resolve(SEGREDOS[id]));
+    }
   });
 
   it('devolve 200 com JWT {sub, perfil: CLIENTE} e consulta o OS com o token interno', async () => {
