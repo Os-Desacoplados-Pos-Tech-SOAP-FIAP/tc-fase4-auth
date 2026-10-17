@@ -84,7 +84,7 @@ jobs:
           SONAR_HOST_URL: https://sonarcloud.io
 
   deploy:
-    name: Terraform ${{ inputs.action }} (requer aprovação)
+    name: deploy
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     # Gate de custo: aguarda aprovação de um revisor do environment.
