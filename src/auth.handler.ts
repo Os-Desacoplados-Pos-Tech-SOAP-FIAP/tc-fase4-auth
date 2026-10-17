@@ -15,6 +15,21 @@ const json = (statusCode: number, body: unknown): APIGatewayProxyStructuredResul
 const logErro = (code: string, message: string): void =>
   console.error(JSON.stringify({ level: 'error', code, message }));
 
+const SEGREDO_INDISPONIVEL = {
+  code: 'SEGREDO_INDISPONIVEL',
+  message: 'Não foi possível obter as credenciais do serviço',
+} as const;
+
+/** Lê o segredo e devolve `null` em falha. O log registra só o id do segredo, nunca o valor. */
+const lerSegredo = async (secretId: string): Promise<string | null> => {
+  try {
+    return await getSecret(secretId);
+  } catch {
+    logErro(SEGREDO_INDISPONIVEL.code, `Falha ao ler o segredo ${secretId}`);
+    return null;
+  }
+};
+
 /**
  * POST /auth — autentica o cliente pelo CPF em 3 etapas (requisito da fase):
  * 1. valida formato/dígitos; 2. consulta o cliente na rota interna do OS; 3. emite JWT com perfil CLIENTE.
@@ -40,9 +55,12 @@ export async function handler(
     return json(500, { code: 'CONFIGURACAO_AUSENTE', message: 'Erro de configuração' });
   }
 
-  const tokenInterno = await getSecret(
+  const tokenInterno = await lerSegredo(
     process.env.INTERNAL_SERVICE_TOKEN_SECRET_ID ?? 'oficina-fase4/INTERNAL_SERVICE_TOKEN',
   );
+  if (!tokenInterno) {
+    return json(500, SEGREDO_INDISPONIVEL);
+  }
 
   let cliente;
   try {
@@ -56,7 +74,10 @@ export async function handler(
     return json(404, { code: 'CLIENTE_NAO_ENCONTRADO', message: 'Cliente não cadastrado' });
   }
 
-  const jwtSecret = await getSecret(process.env.JWT_SECRET_ID ?? 'oficina-fase4/JWT_SECRET');
+  const jwtSecret = await lerSegredo(process.env.JWT_SECRET_ID ?? 'oficina-fase4/JWT_SECRET');
+  if (!jwtSecret) {
+    return json(500, SEGREDO_INDISPONIVEL);
+  }
 
   return json(200, {
     access_token: emitirToken(jwtSecret, cliente.id),
